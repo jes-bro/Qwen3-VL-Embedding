@@ -3,10 +3,9 @@ import numpy as np
 import torch
 from pathlib import Path
 from collections import defaultdict
+from natsort import natsorted
 # Define a list of query texts
-queries = [
-    {"text": "CPR video on rainy day."}
-]
+
 
 # Define a list of document texts and images
 # documents = [
@@ -20,17 +19,21 @@ queries = [
 model_name_or_path = "Qwen/Qwen3-VL-Embedding-2B"
 
 # Initialize the Qwen3VLEmbedder model
-model = Qwen3VLEmbedder(model_name_or_path=model_name_or_path, max_frames=8,
-    max_pixels=448*448,
-    total_pixels=8*448*448)
+model = Qwen3VLEmbedder(model_name_or_path=model_name_or_path,
+    max_pixels=112*112,
+    total_pixels=4*112*112)
 # We recommend enabling flash_attention_2 for better acceleration and memory saving,
 # model = Qwen3VLEmbedder(model_name_or_path=model_name_or_path, torch_dtype=torch.float16, attn_implementation="flash_attention_2")
 
 paths = []
 records = []
+query_paths = []
 top_level_path = Path("/home/jess/Downloads/cpr_vids").rglob('*.png')
 for file_path in top_level_path:
-    paths.append(str(file_path))
+    if "cam" in str(file_path) and "press" in str(file_path):
+        paths.append(str(file_path))
+        if "08_2" in str(file_path):
+            query_paths.append(str(file_path))
     # print(file_path)
     # print(file_path)
 # 32 frames per video rn
@@ -38,12 +41,19 @@ for file_path in top_level_path:
 # then you can mention the next steps and the metrics and the testing the last part and training m2iv on more stuff 
 # and all of the intricacies of the rag need to be selected and done 
 # but it's ok you will figure that out
+# but tomorrow query with video with similarity goal for meeting time 
+# figure out what to say to group with woody and stuff 
+# you should tell the people in the gc about woody before the meeting and email chris back finally
 paths = paths[0:128]
+paths = natsorted(paths)
+query_paths = natsorted(query_paths)
 videos = defaultdict(list)
 # rewrite later
 for path in paths:
     posix_path = Path(path)
     videos[posix_path.parent].append(path)
+for video in videos.keys():
+    videos[video] = videos[video][0:4]
 print(videos.keys())
 documents = []
 
@@ -52,6 +62,12 @@ for video_dir, frame_paths in videos.items():
         "text": "Represent this video for retrieval.",
         "image": frame_paths   # list of frame paths
     })
+
+queries = [
+    {"text": "Represent this video for retrieval.","image": query_paths[0:4]}
+]
+
+print(f'paths 0-4 query frames: {query_paths[0:4]}')
     
 # Combine queries and documents into a single input list
 inputs = queries + documents
