@@ -1,9 +1,12 @@
-from src.models.qwen3_vl_embedding import Qwen3VLEmbedder
 import numpy as np
 import torch
 from pathlib import Path
 from collections import defaultdict
 from natsort import natsorted
+from src.models.qwen3_vl_embedding import Qwen3VLEmbedder
+from qdrant_client.models import VectorParams, Distance
+from qdrant_client.models import PointStruct
+from qdrant_client import QdrantClient
 # Define a list of query texts
 
 
@@ -74,8 +77,31 @@ inputs = queries + documents
 
 # Process the inputs to get embeddings
 embeddings = model.process(inputs)
+print(embeddings.shape)
+
+client = QdrantClient(":memory:")
+
+if not client.collection_exists("video_embs"):
+   client.create_collection(
+      collection_name="video_embs",
+      vectors_config=VectorParams(size=2048, distance=Distance.COSINE),
+   )
+
+client.upsert(
+   collection_name="video_embs",
+   points=[
+      PointStruct(
+            id=idx,
+            vector=vector,
+            payload={"color": "red", "rand_number": idx % 10}
+      )
+      for idx, vector in enumerate(embeddings)
+   ]
+)
 
 # Compute similarity scores between query embeddings and document embeddings
+# Realized this is just dot product not cosine similarity
+# So will need to change to cosine similarity so we don't care about magnitude
 similarity_scores = (embeddings[:1] @ embeddings[1:].T)
 
 # Print out the similarity scores in a list format
