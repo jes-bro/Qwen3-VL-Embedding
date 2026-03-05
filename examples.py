@@ -1,14 +1,50 @@
+import sys
 import numpy as np
 import torch
+import json
+import subprocess
 from pathlib import Path
 from collections import defaultdict
 from natsort import natsorted
-from src.models.qwen3_vl_embedding import Qwen3VLEmbedder
+# from src.models.qwen3_vl_embedding import Qwen3VLEmbedder
 from qdrant_client.models import VectorParams, Distance
 from qdrant_client.models import PointStruct
 from qdrant_client import QdrantClient
-# Define a list of query texts
 
+try:
+    from transformers.utils.generic import check_model_inputs  # old
+except Exception:
+    from transformers.utils import generic as _generic
+    from transformers.utils.generic import merge_with_config_defaults
+    from transformers.utils.output_capturing import capture_outputs
+
+    def check_model_inputs(func=None):
+        def _wrap(f):
+            return capture_outputs(merge_with_config_defaults(f))
+        return _wrap if func is None else _wrap(func)
+
+    # make it importable as: from transformers.utils.generic import check_model_inputs
+    _generic.check_model_inputs = check_model_inputs
+
+from src.models.qwen3_vl_embedding import Qwen3VLEmbedder
+# embed the good and bad lists and store as separate vectors
+process = subprocess.Popen(['bash', '/home/jess/Qwen3-VL-Embedding/run_get_embeddings.sh'], stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    text=True)
+
+
+log = []
+
+for line in process.stdout:
+    print(line, end="")
+    log.append(line)
+
+process.wait()
+goodbadlistfile = '/home/jess/Qwen3-VL-Embedding/goodbadoutputs.json'
+
+# Define a list of query texts
+with open(goodbadlistfile, 'r') as file:
+    goods_and_bads = json.load(file)
 
 # Define a list of document texts and images
 # documents = [
@@ -16,7 +52,19 @@ from qdrant_client import QdrantClient
 #     {"image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"},
 #     {"text": "A woman shares a joyful moment with her golden retriever on a sun-drenched beach at sunset, as the dog offers its paw in a heartwarming display of companionship and trust.", "image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"}
 # ]
+documents = []
+queries = []
 
+for video_name in goods_and_bads.keys():
+    if '1' not in video_name:
+        documents.append({
+        "text": goods_and_bads[video_name]['good']
+    })
+    else:
+        queries.append({"text": goods_and_bads[video_name]['bad']})
+
+print(documents)
+print(queries)
 
 # Specify the model path
 model_name_or_path = "Qwen/Qwen3-VL-Embedding-2B"
@@ -58,17 +106,23 @@ for path in paths:
 for video in videos.keys():
     videos[video] = videos[video][0:4]
 print(videos.keys())
-documents = []
 
-for video_dir, frame_paths in videos.items():
-    documents.append({
-        "text": "Represent this video for retrieval.",
-        "image": frame_paths   # list of frame paths
-    })
 
-queries = [
-    {"text": "Represent this video for retrieval.","image": query_paths[0:4]}
-]
+# we want expert good lists
+# for video_dir, frame_paths in videos.items():
+#     documents.append({
+#         "text": good_list_string,
+#         "image": frame_paths   # list of frame paths
+#     })
+# documents.append({
+#         "text": good_list_intexp
+#     })
+
+# documents.append({
+#         "text": good_list_exp
+#     })
+# and novice bad list and to find similarity between those and visual component, but mostly the poses not the raw video
+# so will need to do poses
 
 print(f'paths 0-4 query frames: {query_paths[0:4]}')
     
@@ -81,28 +135,61 @@ print(embeddings.shape)
 
 client = QdrantClient(":memory:")
 
-if not client.collection_exists("video_embs"):
+# if not client.collection_exists("video_embs"):
+#    client.create_collection(
+#       collection_name="video_embs",
+#       vectors_config=VectorParams(size=2048, distance=Distance.COSINE),
+#    )
+
+# client.upsert(
+#    collection_name="video_embs",
+#    points=[
+#       PointStruct(
+#             id=idx,
+#             vector=vector,
+#             # payload={"color": "red", "rand_number": idx % 10}
+#       )
+#       for idx, vector in enumerate(embeddings)
+#    ]
+# )
+
+if not client.collection_exists("list_embs"):
    client.create_collection(
-      collection_name="video_embs",
+      collection_name="list_embs",
       vectors_config=VectorParams(size=2048, distance=Distance.COSINE),
    )
 
 client.upsert(
-   collection_name="video_embs",
+   collection_name="list_embs",
    points=[
       PointStruct(
             id=idx,
             vector=vector,
-            payload={"color": "red", "rand_number": idx % 10}
+            # payload={"color": "red", "rand_number": idx % 10}
       )
       for idx, vector in enumerate(embeddings)
    ]
 )
 
+# Need to fuse results from the different comparisons 
+# so the nov bad exp good pairing and the nov good exp good pairing 
+# then fuse with the pose similarity / other perspective similarity things 
+# how to make all those comparisons happen? figurre that out after we do this first one
 # Compute similarity scores between query embeddings and document embeddings
 # Realized this is just dot product not cosine similarity
 # So will need to change to cosine similarity so we don't care about magnitude
 similarity_scores = (embeddings[:1] @ embeddings[1:].T)
+
+# Raw similarity does not work
+# Next will try top k similarity words (k = number of words in novice bad list or exp good list whicever is shorter)
+# See if that works - like per word for top k words that are similar
+# Cause it's ok if the expert is good at other things 
+# And maybe do cosine similarity try that cause magnitude invariant
+# and incorporate positive lists we want similar positive lists as well with extra 
+# so as to not give people a poor example of what they are already doing well at so as to only provide a helpful example
+# see how that goes
+# then do poses 
+# and try with real data
 
 # Print out the similarity scores in a list format
 print(similarity_scores.tolist())
