@@ -9,7 +9,7 @@ from natsort import natsorted
 # from src.models.qwen3_vl_embedding import Qwen3VLEmbedder
 from qdrant_client.models import VectorParams, Distance
 from qdrant_client.models import PointStruct
-from qdrant_client import QdrantClient
+from qdrant_client import QdrantClient, models
 
 try:
     from transformers.utils.generic import check_model_inputs  # old
@@ -54,14 +54,19 @@ with open(goodbadlistfile, 'r') as file:
 # ]
 documents = []
 queries = []
+exp_video_names = []
+query_vid_names = []
 
 for video_name in goods_and_bads.keys():
     if '1' not in video_name:
         documents.append({
         "text": goods_and_bads[video_name]['good']
     })
+        exp_video_names.append(video_name)
     else:
         queries.append({"text": goods_and_bads[video_name]['bad']})
+        queries.append({"text": goods_and_bads[video_name]['good']})
+        query_vid_names.append(video_name)
 
 print(documents)
 print(queries)
@@ -131,6 +136,7 @@ inputs = queries + documents
 
 # Process the inputs to get embeddings
 embeddings = model.process(inputs)
+# make embeddings into good/bad tuples
 print(embeddings.shape)
 
 client = QdrantClient(":memory:")
@@ -153,23 +159,71 @@ client = QdrantClient(":memory:")
 #    ]
 # )
 
-if not client.collection_exists("list_embs"):
+if not client.collection_exists("expert_data"):
    client.create_collection(
-      collection_name="list_embs",
-      vectors_config=VectorParams(size=2048, distance=Distance.COSINE),
+      collection_name="expert_data",
+      vectors_config={"good_exp_vector":VectorParams(size=2048, distance=Distance.COSINE),
+    #   "bad_exp_vector":VectorParams(size=2048, distance=Distance.COSINE), # might need bad exp later
+      }
    )
+# what's more important right now is two queries - nov good and nov bad so will need to update json file and processing there
+# and then use pre-fetch to do the two comparisons and then weighted fusion
+
+num_queries = 2
+bad_novice_vector = embeddings[0].detach().cpu().float().numpy()
+good_novice_vector = embeddings[1].detach().cpu().float().numpy()
+expert_good_vectors = embeddings[num_queries:].detach().cpu().float().numpy()
 
 client.upsert(
-   collection_name="list_embs",
+   collection_name="expert_data",
    points=[
       PointStruct(
             id=idx,
-            vector=vector,
+            vector={
+                "good_exp_vector":vector,
+            },
+            payload={
+                "clip_name": exp_video_names[idx],
+                # "annotation": 1.99, clip_path
+            },
             # payload={"color": "red", "rand_number": idx % 10}
       )
-      for idx, vector in enumerate(embeddings)
+      for idx, vector in enumerate(expert_good_vectors)
    ]
 )
+
+# client.query_points(
+#     collection_name="expert_data",
+#     prefetch=models.Prefetch(
+#         query=bad_novice_vector,  # <------------- small byte vector
+#         using="good_exp_vector",
+#         limit=3,
+#     ),
+#     query=good_novice_vector,  # <-- full vector
+#     using="good_exp_vector",
+#     limit=3,
+# ) # difference? 
+
+# this seems to be it though
+result = client.query_points(
+    collection_name="expert_data",
+    prefetch=[
+        models.Prefetch(
+            query=bad_novice_vector,
+            using="good_exp_vector",
+            limit=1,
+        ),
+        models.Prefetch(
+            query=good_novice_vector,  # <-- dense vector
+            using="good_exp_vector",
+            limit=1, # sweep the limit hyperparams too. not bad spot for now. cause it got the right one.. but it should with the ranking multiple anyway. Need to handle the not same number of them case and do the matching thing i think. i hope theres an efficient way to do that.
+        ),
+    ],
+    query=models.RrfQuery(rrf=models.Rrf(weights=[2.0, 1.0])), # try 2 and sweep some hyperparams maybe 
+)
+
+print(result)
+print(good_novice_vector @ bad_novice_vector)
 
 # Need to fuse results from the different comparisons 
 # so the nov bad exp good pairing and the nov good exp good pairing 
@@ -178,7 +232,12 @@ client.upsert(
 # Compute similarity scores between query embeddings and document embeddings
 # Realized this is just dot product not cosine similarity
 # So will need to change to cosine similarity so we don't care about magnitude
-similarity_scores = (embeddings[:1] @ embeddings[1:].T)
+# There will only ever be one query for now
+# what is precision of float() cast?
+# num_queries = 2
+# mag_query = np.linalg.norm(embeddings[:1].detach().cpu().float().numpy())
+# mag_docs = np.linalg.norm(embeddings[1:].detach().cpu().float().numpy())
+# similarity_scores = (embeddings[:1] @ embeddings[1:].T) / (mag_query * mag_docs)
 
 # Raw similarity does not work
 # Next will try top k similarity words (k = number of words in novice bad list or exp good list whicever is shorter)
@@ -192,6 +251,6 @@ similarity_scores = (embeddings[:1] @ embeddings[1:].T)
 # and try with real data
 
 # Print out the similarity scores in a list format
-print(similarity_scores.tolist())
+# print(similarity_scores.tolist())
 
 # [[0.8157786130905151, 0.7178360223770142, 0.7173429131507874], [0.5195091962814331, 0.3302568793296814, 0.4391537308692932], [0.3884059488773346, 0.285782128572464, 0.33141762018203735], [0.1092604324221611, 0.03871120512485504, 0.06952016055583954]]
