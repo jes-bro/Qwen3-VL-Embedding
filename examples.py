@@ -58,14 +58,16 @@ exp_video_names = []
 query_vid_names = []
 
 for video_name in goods_and_bads.keys():
-    if '1' not in video_name:
+    if 'nov' not in video_name:
         documents.append({
         "text": goods_and_bads[video_name]['good']
     })
         exp_video_names.append(video_name)
+        print("doc added")
     else:
         queries.append({"text": goods_and_bads[video_name]['bad']})
         queries.append({"text": goods_and_bads[video_name]['good']})
+        print("query added")
         query_vid_names.append(video_name)
 
 print(documents)
@@ -191,6 +193,8 @@ client.upsert(
       for idx, vector in enumerate(expert_good_vectors)
    ]
 )
+for idx, vector in enumerate(expert_good_vectors):
+    print(f'idx {idx}: {exp_video_names[idx]}')
 
 # client.query_points(
 #     collection_name="expert_data",
@@ -216,11 +220,13 @@ result = client.query_points(
         models.Prefetch(
             query=good_novice_vector,  # <-- dense vector
             using="good_exp_vector",
-            limit=1, # sweep the limit hyperparams too. not bad spot for now. cause it got the right one.. but it should with the ranking multiple anyway. Need to handle the not same number of them case and do the matching thing i think. i hope theres an efficient way to do that.
+            limit=1, # sweep the limit hyperparams too. not bad spot for now. cause it got the right one.. but it should with the ranking multiple anyway. Need to handle the not same number of them case and do the matching thing i think. i hope theres an efficient way to do that. and try with real data. find a matching pair and try with real data and let that guide the next part. groceries first. if you know either way that's a problem you can start looking into how to address it
         ),
     ],
     query=models.RrfQuery(rrf=models.Rrf(weights=[2.0, 1.0])), # try 2 and sweep some hyperparams maybe 
 )
+
+# maybe try checking results without double query
 
 print(result)
 print(good_novice_vector @ bad_novice_vector)
