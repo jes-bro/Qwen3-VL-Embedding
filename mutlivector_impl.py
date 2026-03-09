@@ -118,10 +118,11 @@ client.upload_points(
 # May or may not need the dense vector part, toggle it on and off
 results = client.query_points(
     collection_name="dense_multivector_demo",
-    prefetch= [models.Prefetch(
-        query=dense_queries[0],
-        using="dense", # only good expert in there for now
-    ),
+    prefetch= [
+    #     models.Prefetch(
+    #     query=dense_queries[0],
+    #     using="dense", # only good expert in there for now
+    # ),
     models.Prefetch(
         query=colbert_queries[0],
         using="colbert", # only good expert in there for now
@@ -132,7 +133,7 @@ results = client.query_points(
         using="colbert", # only good expert in there for now
         limit=3,
     )],
-    query=models.RrfQuery(rrf=models.Rrf(weights=[1.0, 2.0, 1.0])), # try 2 and sweep some hyperparams maybe 
+    query=models.RrfQuery(rrf=models.Rrf(weights=[2.0, 1.0])), # try 2 and sweep some hyperparams maybe 
     with_payload=True
     # query=colbert_query,
     # using="colbert",
