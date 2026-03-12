@@ -22,7 +22,7 @@ sentiment_task = pipeline("sentiment-analysis", model='cardiffnlp/twitter-robert
 def get_good_and_bad_lists(text):
     overall_sentiment = sentiment_task(text)
     print(f'overall sentiment: {overall_sentiment}')
-    if overall_sentiment[0]['label'] == 'neutral' and overall_sentiment[0]['score'] > 0.6:
+    if overall_sentiment[0]['label'] == 'neutral' and overall_sentiment[0]['score'] > 0.9:
         return [], []
     # if abs(doc._.blob.polarity) < 0.2:
     #     print(f'neutral text: {text}')
@@ -41,6 +41,7 @@ def get_good_and_bad_lists(text):
     for token in doc:
         if token.pos_ == "VERB":
             if token.dep_ not in ("aux", "auxpass"):
+                print(f' relevant token added! : {token.lemma_}')
                 relevant_phrases.append((token, token.lemma_))
                 # else:
                 #     relevant_phrases.append(token.lemma_)
@@ -79,42 +80,37 @@ def get_good_and_bad_lists(text):
 
     good_list = []
     bad_list = []
+    good_list_lower = []
+    bad_list_lower = []
     for (token, lemma) in relevant_phrases:
         result = absa_pipeline(text, text_pair=lemma)
         subj = [child.text for child in token.children if child.dep_ == "nsubj"]
         obj = [child.text for child in token.children if child.dep_ == "dobj"]
-        advmod = [child.text for child in token.children if child.dep_ == "advmod"]
-        if result[0]['label'] == 'Negative' and result[0]['score'] > 0.8:
-            if subj and obj and advmod:
-                bad_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_ + " " + obj[0])
+        # advmod = [child.text for child in token.children if child.dep_ == "advmod"]
+        if result[0]['label'] == 'Negative' and result[0]['score'] > 0.7:
+            if subj and obj:
+                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
             elif subj and obj:
                 bad_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
-            elif subj and advmod:
-                bad_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_)
-            elif obj and advmod:
-                bad_list.append("" + advmod[0] + " " + token.lemma_ + " " + obj[0])
             elif obj: 
                 bad_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
                 bad_list.append("" + subj[0] + " " + token.lemma_) # should i move these down? 
-        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.7: # check and see if this threshold is actually meaningful
-            if subj and obj and advmod:
-                good_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_ + " " + obj[0])
+        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.6: # check and see if this threshold is actually meaningful
+            if subj and obj:
+                good_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
             elif subj and obj:
                 good_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
-            elif subj and advmod:
-                good_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_)
-            elif obj and advmod:
-                good_list.append("" + advmod[0] + " " + token.lemma_ + " " + obj[0])
             elif obj: 
                 good_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
                 good_list.append("" + subj[0] + " " + token.lemma_) # should i move these down? 
             # good_list.append(aspect)
-        print(lemma)
-        print(result)
-        good_list_lower = [phrase.lower() for phrase in good_list]
-        bad_list_lower = [phrase.lower() for phrase in bad_list]
+            print(lemma)
+            print(result)
+    good_list_lower = [phrase.lower() for phrase in good_list]
+    bad_list_lower = [phrase.lower() for phrase in bad_list]
+
     return good_list_lower, bad_list_lower
 
 input_json_path = "/home/jess/sm/temp_cpr_sub_result.json"
@@ -137,14 +133,14 @@ for subtask in subtasks:
                         response_summary: ChatResponse = chat(model='gemma3', messages=[
                         {
                             'role': 'user',
-                            'content': f'Rephrase the feedback that the person/camera-wearer got. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
+                            'content': f'If the person recieved constructive feedback, simply say "negative": {individual_comment}. Plain text only. No Markdown or formatting or new lines. Just "negative"',
                             'format' : 'json'
                         },
                         ])
                         positive_fb_summary: ChatResponse = chat(model='gemma3', messages=[
                         {
                             'role': 'user',
-                            'content': f'Rephrase the positive feedback that the person/camera-wearer got, if any. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
+                            'content': f'Summarize positive feedback that the person/camera-wearer got, if any. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
                             'format' : 'json'
                         },
                         ])
@@ -152,12 +148,12 @@ for subtask in subtasks:
                         # doc = nlp(individual_comment)
                         print(f"Individual comment: {individual_comment}") # Maybe just filter out negative sentiment ones?
                         print(f'Comment summary: {individual_comment_summary}')
-                        _, bad_list_individual = get_good_and_bad_lists(individual_comment) 
-                        good_list_individual, _ = get_good_and_bad_lists(individual_comment) 
-                        if good_list_individual is not None:
+                        good_list_individual, bad_list_individual = get_good_and_bad_lists(individual_comment) 
+                        # good_list_individual, _ = get_good_and_bad_lists(positive_fb_summary.message.content) 
+                        if good_list_individual:
                             overall_good_list.extend(good_list_individual)
                             print(f"Added {good_list_individual} to overall good list!")
-                        if bad_list_individual is not None:
+                        if bad_list_individual:
                             overall_bad_list.extend(bad_list_individual)
                             print(f"Added {bad_list_individual} to overall bad list!")
                 subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["good_list"] = overall_good_list
