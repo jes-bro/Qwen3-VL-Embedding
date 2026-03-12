@@ -22,15 +22,15 @@ sentiment_task = pipeline("sentiment-analysis", model='cardiffnlp/twitter-robert
 def get_good_and_bad_lists(text):
     overall_sentiment = sentiment_task(text)
     print(f'overall sentiment: {overall_sentiment}')
-    if overall_sentiment[0]['label'] == 'neutral' and overall_sentiment[0]['score'] > 0.9:
+    if overall_sentiment[0]['label'] == 'neutral' and overall_sentiment[0]['score'] > 0.8:
         return [], []
     # if abs(doc._.blob.polarity) < 0.2:
     #     print(f'neutral text: {text}')
     #     return [], []
-    result = aspect_extractor.predict(
-    [text]
-    )
-    print(result)
+    # result = aspect_extractor.predict(
+    # [text]
+    # )
+    # print(result)
     doc = nlp(text)
     chunks = list(doc)
     print(chunks)
@@ -38,7 +38,7 @@ def get_good_and_bad_lists(text):
     # seen_chunks = []
     seen_roots = []
     relevant_phrases = []
-    STATE_VERBS = {"want", "like", "know", "believe", "think", "have", "be", "get", "seem", "need"}
+    STATE_VERBS = {"want", "like", "know", "believe", "think", "have", "be", "get", "seem", "need", "try", "mean"}
     for token in doc:
         if token.pos_ == "VERB" and token.lemma_ not in STATE_VERBS:
             if token.dep_ not in ("aux", "auxpass"):
@@ -85,6 +85,7 @@ def get_good_and_bad_lists(text):
     bad_list_lower = []
     for (token, lemma) in relevant_phrases:
         result = absa_pipeline(text, text_pair=lemma)
+        # print(result)
         subj = [child.text for child in token.children if child.dep_ == "nsubj"]
         obj = [child.text for child in token.children if child.dep_ == "dobj"]
         # advmod = [child.text for child in token.children if child.dep_ == "advmod"]
@@ -95,6 +96,8 @@ def get_good_and_bad_lists(text):
                 bad_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
                 bad_list.append(token.lemma_) # should i move these down? 
+            print(lemma)
+            print(result)
         elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.6: # check and see if this threshold is actually meaningful
             if subj and obj:
                 good_list.append("" + token.lemma_ + " " + obj[0])
