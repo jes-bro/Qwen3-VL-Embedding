@@ -41,14 +41,7 @@ def get_good_and_bad_lists(text):
     for token in doc:
         if token.pos_ == "VERB":
             if token.dep_ not in ("aux", "auxpass"):
-                subj = [child.text for child in token.children if child.dep_ == "nsubj"]
-                obj = [child.text for child in token.children if child.dep_ == "dobj"]
-                if subj and obj:
-                    relevant_phrases.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
-                elif obj: 
-                    relevant_phrases.append("" + token.lemma_ + " " + obj[0])
-                elif subj:
-                    relevant_phrases.append("" + subj[0] + " " + token.lemma_)
+                relevant_phrases.append((token, token.lemma_))
                 # else:
                 #     relevant_phrases.append(token.lemma_)
                 # else:
@@ -82,17 +75,43 @@ def get_good_and_bad_lists(text):
     #         print(f'Probably less relevant phrase: {chunk}')
         
 
-    relevant_phrases_lowered = [word.lower() for word in relevant_phrases]
+    relevant_phrases_lowered = [word[1].lower() for word in relevant_phrases]
 
     good_list = []
     bad_list = []
-    for aspect in relevant_phrases_lowered:
-        result = absa_pipeline(text, text_pair=str(aspect))
+    for (token, lemma) in relevant_phrases_lowered:
+        result = absa_pipeline(text, text_pair=lemma)
+        subj = [child.text for child in token.children if child.dep_ == "nsubj"]
+        obj = [child.text for child in token.children if child.dep_ == "dobj"]
+        advmod = [child.text for child in token.children if child.dep_ == "advmod"]
         if result[0]['label'] == 'Negative' and result[0]['score'] > 0.8:
-            bad_list.append(aspect)
+            if subj and obj and advmod:
+                bad_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_ + " " + obj[0])
+            elif subj and obj:
+                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
+            elif subj and advmod:
+                bad_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_)
+            elif obj and advmod:
+                bad_list.append("" + advmod[0] + " " + token.lemma_ + " " + obj[0])
+            elif obj: 
+                bad_list.append("" + token.lemma_ + " " + obj[0])
+            elif subj:
+                bad_list.append("" + subj[0] + " " + token.lemma_) # should i move these down? 
         elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.55: # check and see if this threshold is actually meaningful
-            good_list.append(aspect)
-        print(aspect)
+            if subj and obj and advmod:
+                good_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_ + " " + obj[0])
+            elif subj and obj:
+                good_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
+            elif subj and advmod:
+                good_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_)
+            elif obj and advmod:
+                good_list.append("" + advmod[0] + " " + token.lemma_ + " " + obj[0])
+            elif obj: 
+                good_list.append("" + token.lemma_ + " " + obj[0])
+            elif subj:
+                good_list.append("" + subj[0] + " " + token.lemma_) # should i move these down? 
+            # good_list.append(aspect)
+        print(lemma)
         print(result)
     return good_list, bad_list
 
