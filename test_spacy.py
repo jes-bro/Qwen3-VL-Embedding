@@ -22,7 +22,7 @@ sentiment_task = pipeline("sentiment-analysis", model='cardiffnlp/twitter-robert
 def get_good_and_bad_lists(text):
     overall_sentiment = sentiment_task(text)
     print(f'overall sentiment: {overall_sentiment}')
-    if overall_sentiment[0]['label'] == 'neutral' and overall_sentiment[0]['score'] > 0.8:
+    if overall_sentiment[0]['label'] == 'neutral' and overall_sentiment[0]['score'] > 0.6:
         return [], []
     # if abs(doc._.blob.polarity) < 0.2:
     #     print(f'neutral text: {text}')
@@ -86,26 +86,26 @@ def get_good_and_bad_lists(text):
         advmod = [child.text for child in token.children if child.dep_ == "advmod"]
         if result[0]['label'] == 'Negative' and result[0]['score'] > 0.8:
             if subj and obj and advmod:
-                bad_list.append(""+ subj[0] + " " + token.lemma_ + " " + obj[0] + " " + advmod[0])
+                bad_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_ + " " + obj[0])
             elif subj and obj:
                 bad_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
             elif subj and advmod:
-                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + advmod[0])
+                bad_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_)
             elif obj and advmod:
-                bad_list.append("" + token.lemma_ + " " + obj[0] + " " + advmod[0])
+                bad_list.append("" + advmod[0] + " " + token.lemma_ + " " + obj[0])
             elif obj: 
                 bad_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
                 bad_list.append("" + subj[0] + " " + token.lemma_) # should i move these down? 
         elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.7: # check and see if this threshold is actually meaningful
             if subj and obj and advmod:
-                bad_list.append(""+ subj[0] + " " + token.lemma_ + " " + obj[0] + " " + advmod[0])
+                good_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_ + " " + obj[0])
             elif subj and obj:
-                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
+                good_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
             elif subj and advmod:
-                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + advmod[0])
+                good_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_)
             elif obj and advmod:
-                bad_list.append("" + token.lemma_ + " " + obj[0] + " " + advmod[0])
+                good_list.append("" + advmod[0] + " " + token.lemma_ + " " + obj[0])
             elif obj: 
                 good_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
