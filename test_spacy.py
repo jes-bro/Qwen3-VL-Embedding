@@ -113,7 +113,9 @@ def get_good_and_bad_lists(text):
             # good_list.append(aspect)
         print(lemma)
         print(result)
-    return good_list, bad_list
+        good_list_lower = [phrase.lower() for phrase in good_list]
+        bad_list_lower = [phrase.lower() for phrase in bad_list]
+    return good_list_lower, bad_list_lower
 
 input_json_path = "/home/jess/sm/temp_cpr_sub_result.json"
 
@@ -128,39 +130,40 @@ for subtask in subtasks:
         for timestamp in timestamp_dicts:
             if "commentary" in subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp].keys():
                 commentary_at_timestamp = subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["commentary"]
-                overall_good_list = []
-                overall_bad_list = []
-                for individual_comment in commentary_at_timestamp:
-                    response_summary: ChatResponse = chat(model='gemma3', messages=[
-                    {
-                        'role': 'user',
-                        'content': f'Rephrase the feedback that the person/camera-wearer got. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
-                        'format' : 'json'
-                    },
-                    ])
-                    positive_fb_summary: ChatResponse = chat(model='gemma3', messages=[
-                    {
-                        'role': 'user',
-                        'content': f'Rephrase the positive feedback that the person/camera-wearer got, if any. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
-                        'format' : 'json'
-                    },
-                    ])
-                    individual_comment_summary = response_summary.message.content
-                    # doc = nlp(individual_comment)
-                    print(f"Individual comment: {individual_comment}") # Maybe just filter out negative sentiment ones?
-                    print(f'Comment summary: {individual_comment_summary}')
-                    _, bad_list_individual = get_good_and_bad_lists(individual_comment_summary) 
-                    good_list_individual, _ = get_good_and_bad_lists(individual_comment) 
-                    if good_list_individual is not None:
-                        overall_good_list.extend(good_list_individual)
-                        print(f"Added {good_list_individual} to overall good list!")
-                    if bad_list_individual is not None:
-                        overall_bad_list.extend(bad_list_individual)
-                        print(f"Added {bad_list_individual} to overall bad list!")
+                if commentary_at_timestamp:
+                    overall_good_list = []
+                    overall_bad_list = []
+                    for individual_comment in commentary_at_timestamp:
+                        response_summary: ChatResponse = chat(model='gemma3', messages=[
+                        {
+                            'role': 'user',
+                            'content': f'Rephrase the feedback that the person/camera-wearer got. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
+                            'format' : 'json'
+                        },
+                        ])
+                        positive_fb_summary: ChatResponse = chat(model='gemma3', messages=[
+                        {
+                            'role': 'user',
+                            'content': f'Rephrase the positive feedback that the person/camera-wearer got, if any. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
+                            'format' : 'json'
+                        },
+                        ])
+                        individual_comment_summary = response_summary.message.content
+                        # doc = nlp(individual_comment)
+                        print(f"Individual comment: {individual_comment}") # Maybe just filter out negative sentiment ones?
+                        print(f'Comment summary: {individual_comment_summary}')
+                        _, bad_list_individual = get_good_and_bad_lists(individual_comment) 
+                        good_list_individual, _ = get_good_and_bad_lists(individual_comment) 
+                        if good_list_individual is not None:
+                            overall_good_list.extend(good_list_individual)
+                            print(f"Added {good_list_individual} to overall good list!")
+                        if bad_list_individual is not None:
+                            overall_bad_list.extend(bad_list_individual)
+                            print(f"Added {bad_list_individual} to overall bad list!")
                 subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["good_list"] = overall_good_list
                 subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["needs_improvement_list"] = overall_bad_list
-                print(f'commentary: {individual_comment}')
-                print(f'commentary summary: {individual_comment_summary}')
+                print(f'timestamp: {timestamp}')
+                print(f'video name: {video_name}')
                 print(f'good list: {overall_good_list}')
                 print(f'needs improvement list: {overall_bad_list}')
 
