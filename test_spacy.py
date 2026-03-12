@@ -88,7 +88,7 @@ def get_good_and_bad_lists(text):
         result = absa_pipeline(text, text_pair=str(aspect))
         if result[0]['label'] == 'Negative' and result[0]['score'] > 0.9:
             bad_list.append(aspect)
-        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.9: # check and see if this threshold is actually meaningful
+        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.8: # check and see if this threshold is actually meaningful
             good_list.append(aspect)
         print(aspect)
         print(result)
@@ -117,11 +117,19 @@ for subtask in subtasks:
                         'format' : 'json'
                     },
                     ])
+                    positive_fb_summary: ChatResponse = chat(model='gemma3', messages=[
+                    {
+                        'role': 'user',
+                        'content': f'Rephrase the positive feedback that the person/camera-wearer got, if any. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
+                        'format' : 'json'
+                    },
+                    ])
                     individual_comment_summary = response_summary.message.content
                     # doc = nlp(individual_comment)
                     print(f"Individual comment: {individual_comment}") # Maybe just filter out negative sentiment ones?
                     print(f'Comment summary: {individual_comment_summary}')
-                    good_list_individual, bad_list_individual = get_good_and_bad_lists(individual_comment_summary) 
+                    _, bad_list_individual = get_good_and_bad_lists(individual_comment_summary) 
+                    good_list_individual, _ = get_good_and_bad_lists(individual_comment) 
                     if good_list_individual is not None:
                         overall_good_list.extend(good_list_individual)
                         print(f"Added {good_list_individual} to overall good list!")
