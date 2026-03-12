@@ -22,7 +22,7 @@ sentiment_task = pipeline("sentiment-analysis", model='cardiffnlp/twitter-robert
 def get_good_and_bad_lists(text):
     overall_sentiment = sentiment_task(text)
     print(f'overall sentiment: {overall_sentiment}')
-    if overall_sentiment[0]['label'] == 'neutral' and overall_sentiment[0]['score'] > 0.7:
+    if overall_sentiment[0]['label'] == 'neutral' and overall_sentiment[0]['score'] > 0.8:
         return [], []
     # if abs(doc._.blob.polarity) < 0.2:
     #     print(f'neutral text: {text}')
@@ -49,6 +49,8 @@ def get_good_and_bad_lists(text):
                     relevant_phrases.append("" + token.lemma_ + " " + obj[0])
                 elif subj:
                     relevant_phrases.append("" + subj[0] + " " + token.lemma_)
+                # else:
+                #     relevant_phrases.append(token.lemma_)
                 # else:
                 #     relevant_phrases.append(token.lemma_)
 
@@ -86,9 +88,9 @@ def get_good_and_bad_lists(text):
     bad_list = []
     for aspect in relevant_phrases_lowered:
         result = absa_pipeline(text, text_pair=str(aspect))
-        if result[0]['label'] == 'Negative' and result[0]['score'] > 0.9:
+        if result[0]['label'] == 'Negative' and result[0]['score'] > 0.8:
             bad_list.append(aspect)
-        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.8: # check and see if this threshold is actually meaningful
+        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.55: # check and see if this threshold is actually meaningful
             good_list.append(aspect)
         print(aspect)
         print(result)
