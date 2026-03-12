@@ -38,8 +38,9 @@ def get_good_and_bad_lists(text):
     # seen_chunks = []
     seen_roots = []
     relevant_phrases = []
+    STATE_VERBS = {"want", "like", "know", "believe", "think", "have", "be", "get", "seem", "need"}
     for token in doc:
-        if token.pos_ == "VERB":
+        if token.pos_ == "VERB" and token.lemma_ not in STATE_VERBS:
             if token.dep_ not in ("aux", "auxpass"):
                 print(f' relevant token added! : {token.lemma_}')
                 relevant_phrases.append((token, token.lemma_))
@@ -89,27 +90,23 @@ def get_good_and_bad_lists(text):
         # advmod = [child.text for child in token.children if child.dep_ == "advmod"]
         if result[0]['label'] == 'Negative' and result[0]['score'] > 0.7:
             if subj and obj:
-                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
-            elif subj and obj:
-                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
+                bad_list.append("" + token.lemma_ + " " + obj[0])
             elif obj: 
                 bad_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
-                bad_list.append("" + subj[0] + " " + token.lemma_) # should i move these down? 
+                bad_list.append(token.lemma_) # should i move these down? 
         elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.6: # check and see if this threshold is actually meaningful
             if subj and obj:
-                good_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
-            elif subj and obj:
-                good_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
+                good_list.append("" + token.lemma_ + " " + obj[0])
             elif obj: 
                 good_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
-                good_list.append("" + subj[0] + " " + token.lemma_) # should i move these down? 
+                good_list.append(token.lemma_) # should i move these down? 
             # good_list.append(aspect)
             print(lemma)
             print(result)
-    good_list_lower = [phrase.lower() for phrase in good_list]
-    bad_list_lower = [phrase.lower() for phrase in bad_list]
+    good_list_lower = list(set([phrase.lower() for phrase in good_list]))
+    bad_list_lower = list(set([phrase.lower() for phrase in bad_list]))
 
     return good_list_lower, bad_list_lower
 
@@ -130,32 +127,32 @@ for subtask in subtasks:
                     overall_good_list = []
                     overall_bad_list = []
                     for individual_comment in commentary_at_timestamp:
-                        response_summary: ChatResponse = chat(model='gemma3', messages=[
-                        {
-                            'role': 'user',
-                            'content': f'If the person recieved constructive feedback, simply say "negative": {individual_comment}. Plain text only. No Markdown or formatting or new lines. Just "negative"',
-                            'format' : 'json'
-                        },
-                        ])
-                        positive_fb_summary: ChatResponse = chat(model='gemma3', messages=[
-                        {
-                            'role': 'user',
-                            'content': f'Summarize positive feedback that the person/camera-wearer got, if any. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
-                            'format' : 'json'
-                        },
-                        ])
-                        individual_comment_summary = response_summary.message.content
+                        # response_summary: ChatResponse = chat(model='gemma3', messages=[
+                        # {
+                        #     'role': 'user',
+                        #     'content': f'Rephrase the feedback that the person/camera-wearer got. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
+                        #     'format' : 'json'
+                        # },
+                        # ])
+                        # positive_fb_summary: ChatResponse = chat(model='gemma3', messages=[
+                        # {
+                        #     'role': 'user',
+                        #     'content': f'Summarize positive feedback that the person/camera-wearer got, if any. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
+                        #     'format' : 'json'
+                        # },
+                        # ])
+                        # individual_comment_summary = response_summary.message.content
                         # doc = nlp(individual_comment)
                         print(f"Individual comment: {individual_comment}") # Maybe just filter out negative sentiment ones?
-                        print(f'Comment summary: {individual_comment_summary}')
+                        # print(f'Comment summary: {individual_comment_summary}')
                         good_list_individual, bad_list_individual = get_good_and_bad_lists(individual_comment) 
                         # good_list_individual, _ = get_good_and_bad_lists(positive_fb_summary.message.content) 
-                        if good_list_individual:
-                            overall_good_list.extend(good_list_individual)
-                            print(f"Added {good_list_individual} to overall good list!")
-                        if bad_list_individual:
-                            overall_bad_list.extend(bad_list_individual)
-                            print(f"Added {bad_list_individual} to overall bad list!")
+                        # if good_list_individual:
+                        overall_good_list.extend(good_list_individual)
+                        print(f"Added {good_list_individual} to overall good list!")
+                        # if bad_list_individual:
+                        overall_bad_list.extend(bad_list_individual)
+                        print(f"Added {bad_list_individual} to overall bad list!")
                 subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["good_list"] = overall_good_list
                 subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["needs_improvement_list"] = overall_bad_list
                 print(f'timestamp: {timestamp}')
