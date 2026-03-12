@@ -75,11 +75,11 @@ def get_good_and_bad_lists(text):
     #         print(f'Probably less relevant phrase: {chunk}')
         
 
-    relevant_phrases_lowered = [word[1].lower() for word in relevant_phrases]
+    # relevant_phrases_lowered = [(token, word[1].lower()) for word in relevant_phrases]
 
     good_list = []
     bad_list = []
-    for (token, lemma) in relevant_phrases_lowered:
+    for (token, lemma) in relevant_phrases:
         result = absa_pipeline(text, text_pair=lemma)
         subj = [child.text for child in token.children if child.dep_ == "nsubj"]
         obj = [child.text for child in token.children if child.dep_ == "dobj"]
