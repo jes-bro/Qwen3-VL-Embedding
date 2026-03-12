@@ -97,7 +97,7 @@ def get_good_and_bad_lists(text):
                 bad_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
                 bad_list.append("" + subj[0] + " " + token.lemma_) # should i move these down? 
-        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.55: # check and see if this threshold is actually meaningful
+        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.7: # check and see if this threshold is actually meaningful
             if subj and obj and advmod:
                 good_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_ + " " + obj[0])
             elif subj and obj:
