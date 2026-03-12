@@ -86,26 +86,26 @@ def get_good_and_bad_lists(text):
         advmod = [child.text for child in token.children if child.dep_ == "advmod"]
         if result[0]['label'] == 'Negative' and result[0]['score'] > 0.8:
             if subj and obj and advmod:
-                bad_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_ + " " + obj[0])
+                bad_list.append(""+ subj[0] + " " + token.lemma_ + " " + obj[0] + " " + advmod[0])
             elif subj and obj:
                 bad_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
             elif subj and advmod:
-                bad_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_)
+                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + advmod[0])
             elif obj and advmod:
-                bad_list.append("" + advmod[0] + " " + token.lemma_ + " " + obj[0])
+                bad_list.append("" + token.lemma_ + " " + obj[0] + " " + advmod[0])
             elif obj: 
                 bad_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
                 bad_list.append("" + subj[0] + " " + token.lemma_) # should i move these down? 
         elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.7: # check and see if this threshold is actually meaningful
             if subj and obj and advmod:
-                good_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_ + " " + obj[0])
+                bad_list.append(""+ subj[0] + " " + token.lemma_ + " " + obj[0] + " " + advmod[0])
             elif subj and obj:
-                good_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
+                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + obj[0])
             elif subj and advmod:
-                good_list.append("" + advmod[0] + " " + subj[0] + " " + token.lemma_)
+                bad_list.append("" + subj[0] + " " + token.lemma_ + " " + advmod[0])
             elif obj and advmod:
-                good_list.append("" + advmod[0] + " " + token.lemma_ + " " + obj[0])
+                bad_list.append("" + token.lemma_ + " " + obj[0] + " " + advmod[0])
             elif obj: 
                 good_list.append("" + token.lemma_ + " " + obj[0])
             elif subj:
