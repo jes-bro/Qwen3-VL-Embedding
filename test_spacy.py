@@ -38,7 +38,7 @@ def get_good_and_bad_lists(text):
     # seen_chunks = []
     seen_roots = []
     relevant_phrases = []
-    STATE_VERBS = {"want", "like", "know", "believe", "think", "have", "be", "get", "seem", "need", "try", "mean", "do"}
+    STATE_VERBS = {"want", "like", "know", "believe", "think", "have", "be", "get", "seem", "need", "try", "mean"}
     for token in doc:
         if token.pos_ == "VERB" and token.lemma_ not in STATE_VERBS:
             if token.dep_ not in ("aux", "auxpass"):
@@ -89,7 +89,7 @@ def get_good_and_bad_lists(text):
         subj = [child.text for child in token.children if child.dep_ == "nsubj"]
         obj = [child.text for child in token.children if child.dep_ == "dobj"]
         # advmod = [child.text for child in token.children if child.dep_ == "advmod"]
-        if result[0]['label'] == 'Negative' and result[0]['score'] > 0.7:
+        if result[0]['label'] == 'Negative' and result[0]['score'] > 0.85:
             if subj and obj:
                 bad_list.append("" + token.lemma_ + " " + obj[0])
             elif obj: 
@@ -100,7 +100,7 @@ def get_good_and_bad_lists(text):
                 bad_list.append(token.lemma_)
             print(lemma)
             print(result)
-        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.6: # check and see if this threshold is actually meaningful
+        elif result[0]['label'] == 'Positive'and result[0]['score'] > 0.85: # check and see if this threshold is actually meaningful
             if subj and obj:
                 good_list.append("" + token.lemma_ + " " + obj[0])
             elif obj: 
@@ -135,33 +135,33 @@ for subtask in subtasks:
                         overall_good_list = []
                         overall_bad_list = []
                         for individual_comment in commentary_at_timestamp:
-                            # response_summary: ChatResponse = chat(model='gemma3', messages=[
-                            # {
-                            #     'role': 'user',
-                            #     'content': f'Rephrase the feedback that the person/camera-wearer got. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
-                            #     'format' : 'json'
-                            # },
-                            # ])
-                            # positive_fb_summary: ChatResponse = chat(model='gemma3', messages=[
-                            # {
-                            #     'role': 'user',
-                            #     'content': f'Summarize positive feedback that the person/camera-wearer got, if any. Try to rephrase it like subject verbed noun in adjective way: {individual_comment}. Plain text only. No Markdown or formatting or new lines. Be objective. Include negative stuff too. If there\'s none of good or bad, just leave it out. If the text is neutral, leave that out as well.',
-                            #     'format' : 'json'
-                            # },
-                            # ])
-                            # individual_comment_summary = response_summary.message.content
-                            # doc = nlp(individual_comment)
+                            constructive_response: ChatResponse = chat(model='llama3.1:8b', messages=[
+                            {
+                                'role': 'user',
+                                'content': f'Create a comma separated list of the lemmas of skill actions (1-3 words) that the subject of the commentary needs to improve upon based on the following commentary from an expert. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates.: {individual_comment}',
+                            },
+                            ])
+                            positive_response: ChatResponse = chat(model='llama3.1:8b', messages=[
+                            {
+                                'role': 'user',
+                                'content': f'Create a comma separated list of the lemmas of skill actions (1-3 words) that the subject of the commentary succeeded at based on the following commentary from an expert. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates.: {individual_comment}',
+                            },
+                            ])
                             print(f"Individual comment: {individual_comment}") # Maybe just filter out negative sentiment ones?
                             # print(f'Comment summary: {individual_comment_summary}')
-                            good_list_individual, bad_list_individual = get_good_and_bad_lists(individual_comment) 
+                            # good_list_individual, bead_list_individual = get_good_and_bad_lists(individual_comment) 
+                            print(constructive_response.message.content)
+                            print(positive_response.message.content)
+                            needs_improvement_list = str(constructive_response.message.content).split(", ")
+                            good_executions_list = str(positive_response.message.content).split(", ")
                             # good_list_individual, _ = get_good_and_bad_lists(positive_fb_summary.message.content) 
                             # if good_list_individual:
-                            overall_good_list.extend(good_list_individual)
-                            print(f"Added {good_list_individual} to overall good list!")
+                            overall_good_list.extend(good_executions_list)
+                            print(f"Added {good_executions_list} to overall good list!")
                             # if bad_list_individual:
-                            overall_bad_list.extend(bad_list_individual)
-                            print(f"Added {bad_list_individual} to overall bad list!")
-                    subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["good_list"] = overall_good_list
+                            overall_bad_list.extend(needs_improvement_list)
+                            print(f"Added {needs_improvement_list} to overall bad list!")
+                    subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["good_executions_list"] = overall_good_list
                     subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["needs_improvement_list"] = overall_bad_list
                     print(f'timestamp: {timestamp}')
                     print(f'video name: {video_name}')
