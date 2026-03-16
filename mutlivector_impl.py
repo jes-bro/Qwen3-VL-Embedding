@@ -41,26 +41,32 @@ exp_video_names = []
 query_vid_names = []
 pose_model = YOLO("yolov8l-pose.pt")
 for subtask in goods_and_bads.keys():
-    for vid_name in goods_and_bads[subtask]:
-        if 'time_stamps_file_paths_poses' in goods_and_bads[subtask][vid_name].keys():
-           for timewindow in goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses']:
-                # print(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow].keys()) # only need to check one because they always co-exist- double check
-                if "good_executions_list" in goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow].keys():
-                    good_executions_list = goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow]["good_executions_list"]
-                    needs_improvement_list = goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow]["needs_improvement_list"]
-                for camera_angle_clip in goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow]:
-                    if 'commentary' not in camera_angle_clip and 'good_executions_list' not in camera_angle_clip and 'needs_improvement_list' not in camera_angle_clip:
-                        for (frame_path, pose) in goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip]:
-                            frame = Image.open(frame_path)
-                            # generate pose
-                            frame_pose_result = pose_model(frame) 
-                            # extract pose 
-                            pose = frame_pose_result[0].keypoints.data.cpu().numpy().tolist()
-                            print(pose)
+    if subtask == "press hard at a rate of 100 to 120 compressions per minute":
+        for vid_name in goods_and_bads[subtask]:
+            if 'time_stamps_file_paths_poses' in goods_and_bads[subtask][vid_name].keys():
+                for timewindow in goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses']:
+                        # print(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow].keys()) # only need to check one because they always co-exist- double check
+                        if "good_executions_list" in goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow].keys():
+                            good_executions_list = goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow]["good_executions_list"]
+                            needs_improvement_list = goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow]["needs_improvement_list"]
+                        for camera_angle_clip in goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow]:
+                            if 'commentary' not in camera_angle_clip and 'good_executions_list' not in camera_angle_clip and 'needs_improvement_list' not in camera_angle_clip:
+                                for idx, (frame_path, empty_list) in enumerate(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip]):
+                                    frame = Image.open(frame_path)
+                                    # generate pose
+                                    frame_pose_result = pose_model(frame) 
+                                    # extract pose 
+                                    pose = frame_pose_result[0].keypoints.data.cpu().numpy().tolist()
+                                    goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip][idx] = (frame_path, pose)
+                                    print(pose)
         # print(goods_and_bads[subtask][vid_name]['time_window'])
         # print(goods_and_bads[subtask][vid_name]['time_window'].keys())
     # print((subtask))
     # print(goods_and_bads[subtask].keys())
+
+test_pose_path = "/home/jess/Qwen3-VL-Embedding/all_info.json"
+with open(test_pose_path, 'w') as f:
+    json.dump(goods_and_bads, f)
 exit()
     # if 'nov' not in video_name:
     #     documents.append(goods_and_bads[video_name]['good'])
