@@ -122,6 +122,8 @@ input_json_path = "/home/jess/sm/temp_compression_sub_result.json" # "/home/jess
 with open(input_json_path, "r") as f:
     subtasks = json.load(f)
 
+smol = "llama3.1:8b"
+
 for subtask in subtasks:
     print(subtask)
     for video_name in subtasks[subtask]:
@@ -135,32 +137,40 @@ for subtask in subtasks:
                         overall_good_list = []
                         overall_bad_list = []
                         for individual_comment in commentary_at_timestamp:
-                            constructive_response: ChatResponse = chat(model='llama3.1:8b', messages=[
-                            {
-                                'role': 'user',
-                                'content': f'Create a comma separated list of the lemmas of skill actions (1-3 words) that the subject of the commentary needs to improve upon based on the following commentary from an expert. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates.: {individual_comment}',
-                            },
-                            ])
-                            positive_response: ChatResponse = chat(model='llama3.1:8b', messages=[
-                            {
-                                'role': 'user',
-                                'content': f'Create a comma separated list of the lemmas of skill actions (1-3 words) that the subject of the commentary succeeded at based on the following commentary from an expert. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates.: {individual_comment}',
-                            },
-                            ])
-                            print(f"Individual comment: {individual_comment}") # Maybe just filter out negative sentiment ones?
-                            # print(f'Comment summary: {individual_comment_summary}')
-                            # good_list_individual, bead_list_individual = get_good_and_bad_lists(individual_comment) 
-                            print(constructive_response.message.content)
-                            print(positive_response.message.content)
-                            needs_improvement_list = str(constructive_response.message.content).split(", ")
-                            good_executions_list = str(positive_response.message.content).split(", ")
-                            # good_list_individual, _ = get_good_and_bad_lists(positive_fb_summary.message.content) 
-                            # if good_list_individual:
-                            overall_good_list.extend(good_executions_list)
-                            print(f"Added {good_executions_list} to overall good list!")
-                            # if bad_list_individual:
-                            overall_bad_list.extend(needs_improvement_list)
-                            print(f"Added {needs_improvement_list} to overall bad list!")
+                            overall_sentiment = sentiment_task(individual_comment)
+                            print(f'overall sentiment: {overall_sentiment}')
+                            if overall_sentiment[0]['label'] == 'neutral' and overall_sentiment[0]['score'] > 0.8:
+                                pass
+                            else:
+
+                                response_constructive: ChatResponse = chat(model=smol, messages=[
+                                {
+                                    'role': 'user',
+                                    'content': f'Analyze the following text for instances of negative feedback on skills the subject needs to improve upon. If no negative feedback exists, state \'None found\' and do not attempt to identify any. If negative feedback on skill attributes that need to be performed better exists, create a comma separated list of the lemmas of skill actions (1-3 words) that the subject of the commentary needs to improve upon based on the following commentary from an expert. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates. Here is the commentary: {individual_comment}',
+                                },
+                                ])
+
+                                response_positive: ChatResponse = chat(model=smol, messages=[
+                                {
+                                    'role': 'user',
+                                    'content': f'Analyze the following text for instances of positive feedback. If no positive feedback exists, state \'None found\' and do not attempt to identify any. If positive feedback exists, create a comma separated list of the lemmas of skill actions (1-3 words) that the subject performed well based on the commentary. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates. Here is the commentary: {individual_comment}',
+                                },
+                                ])
+
+                                print(f"Individual comment: {individual_comment}") # Maybe just filter out negative sentiment ones?
+                                # print(f'Comment summary: {individual_comment_summary}')
+                                # good_list_individual, bead_list_individual = get_good_and_bad_lists(individual_comment) 
+                                print(f'constructive feedback skill attributes: {response_constructive.message.content}')
+                                print(f'postive feedback skill attributes: {response_positive.message.content}') # can always lemma later if you need to and extract the lemmas from the lists
+                                needs_improvement_list = str(response_constructive.message.content).split(", ")
+                                good_executions_list = str(response_positive.message.content).split(", ")
+                                # good_list_individual, _ = get_good_and_bad_lists(positive_fb_summary.message.content) 
+                                # if good_list_individual:
+                                overall_good_list.extend(good_executions_list)
+                                print(f"Added {good_executions_list} to overall good list!")
+                                # if bad_list_individual:
+                                overall_bad_list.extend(needs_improvement_list)
+                                print(f"Added {needs_improvement_list} to overall bad list!")
                     subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["good_executions_list"] = overall_good_list
                     subtasks[subtask][video_name]["time_stamps_file_paths_poses"][timestamp]["needs_improvement_list"] = overall_bad_list
                     print(f'timestamp: {timestamp}')
