@@ -56,7 +56,7 @@ for subtask in goods_and_bads.keys():
                                 for idx, (frame_path, pose) in enumerate(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip]):
                                     frame_paths.append(frame_path)
                                     poses.append(pose)
-                                clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses, "good_executions": good_executions_list, "needs_improvement": needs_improvement_list}
+                                clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses, "good_executions": ", ".join(good_executions_list), "needs_improvement": ", ".join(needs_improvement_list)}
                                 documents.append(clip_dict) 
                                     # frame = Image.open(frame_path)
                                     # generate pose
@@ -69,22 +69,22 @@ for subtask in goods_and_bads.keys():
         # print(goods_and_bads[subtask][vid_name]['time_window'].keys())
     # print((subtask))
     # print(goods_and_bads[subtask].keys())
-client.upload_points(
-    collection_name="expert_video_clips",
-    points=[
-        models.PointStruct(
-            id=idx, vector={
-                "good_executions": doc["good_executions"],
-                "needs_improvement": doc["needs_improvement"]
-            }
-        )
-        for idx, doc in enumerate(documents)
-    ],
-)
+# client.upload_points(
+#     collection_name="expert_video_clips",
+#     points=[
+#         models.PointStruct(
+#             id=idx, vector={
+#                 "good_executions": doc["good_executions"],
+#                 "needs_improvement": doc["needs_improvement"]
+#             }
+#         )
+#         for idx, doc in enumerate(documents)
+#     ],
+# )
 # test_pose_path = "/home/jess/Qwen3-VL-Embedding/all_info.json"
 # with open(test_pose_path, 'w') as f:
 #     json.dump(goods_and_bads, f)
-exit()
+
     # if 'nov' not in video_name:
     #     documents.append(goods_and_bads[video_name]['good'])
     #     exp_video_names.append(video_name)
@@ -144,6 +144,9 @@ colbert_queries = [
     models.Document(text=query, model="colbert-ir/colbertv2.0")
     for query in queries
 ]
+
+exit()
+
 POSE_LENGTH = ...
 collection_name = "dense_multivector_demo"
 client.create_collection(
