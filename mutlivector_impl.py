@@ -56,7 +56,7 @@ for subtask in goods_and_bads.keys():
                                 for idx, (frame_path, pose) in enumerate(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip]):
                                     frame_paths.append(frame_path)
                                     poses.append(pose)
-                                clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses}
+                                clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses, "good_executions": good_executions_list, "needs_improvement": needs_improvement_list}
                                 documents.append(clip_dict) 
                                     # frame = Image.open(frame_path)
                                     # generate pose
@@ -69,7 +69,18 @@ for subtask in goods_and_bads.keys():
         # print(goods_and_bads[subtask][vid_name]['time_window'].keys())
     # print((subtask))
     # print(goods_and_bads[subtask].keys())
-
+client.upload_points(
+    collection_name="expert_video_clips",
+    points=[
+        models.PointStruct(
+            id=idx, vector={
+                "good_executions": doc["good_executions"],
+                "needs_improvement": doc["needs_improvement"]
+            }
+        )
+        for idx, doc in enumerate(documents)
+    ],
+)
 # test_pose_path = "/home/jess/Qwen3-VL-Embedding/all_info.json"
 # with open(test_pose_path, 'w') as f:
 #     json.dump(goods_and_bads, f)
@@ -96,42 +107,78 @@ print(f'queries: {queries}')
 # ]
 # query_text = "Apple, banana"
 
-dense_documents = [
-    models.Document(text=doc, model="BAAI/bge-small-en")
+# dense_documents = [
+#     models.Document(text=doc["good_executions"], model="BAAI/bge-small-en")
+#     for doc in documents
+# ]
+pose_vectors = [doc["poses"] for doc in documents]
+
+dense_good_executions = [
+    models.Document(text=doc["good_executions"], model="BAAI/bge-small-en")
     for doc in documents
 ]
+
+dense_needs_improvement = [
+    models.Document(text=doc["needs_improvement"], model="BAAI/bge-small-en")
+    for doc in documents
+]
+
+
 dense_queries = [
     models.Document(text=query, model="BAAI/bge-small-en")
     for query in queries
         
 ]
 
-colbert_documents = [
-    models.Document(text=doc, model="colbert-ir/colbertv2.0")
+colbert_good_executions = [
+    models.Document(text=doc["good_executions"], model="colbert-ir/colbertv2.0")
     for doc in documents
 ]
+
+colbert_needs_improvement = [
+    models.Document(text=doc["needs_improvement"], model="colbert-ir/colbertv2.0")
+    for doc in documents
+]
+
 colbert_queries = [
     models.Document(text=query, model="colbert-ir/colbertv2.0")
     for query in queries
 ]
-
+POSE_LENGTH = ...
 collection_name = "dense_multivector_demo"
 client.create_collection(
     collection_name=collection_name,
     vectors_config={
-        "dense": models.VectorParams(
+        "dense_good_executions": models.VectorParams(
             size=384,
             distance=models.Distance.COSINE
             # Leave HNSW indexing ON for dense
         ),
-        "colbert": models.VectorParams(
+        "poses": models.VectorParams(
+            size=POSE_LENGTH,
+            distance=models.Distance.COSINE
+            # Leave HNSW indexing ON for dense
+        ),
+        "dense_needs_improvement": models.VectorParams(
+            size=384,
+            distance=models.Distance.COSINE
+            # Leave HNSW indexing ON for dense
+        ),
+        "colbert_good_executions": models.VectorParams(
+            size=128,
+            distance=models.Distance.COSINE,
+            multivector_config=models.MultiVectorConfig(
+                comparator=models.MultiVectorComparator.MAX_SIM
+            )
+        ),
+        "colbert_needs_improvement": models.VectorParams(
             size=128,
             distance=models.Distance.COSINE,
             multivector_config=models.MultiVectorConfig(
                 comparator=models.MultiVectorComparator.MAX_SIM
             ),
-            hnsw_config=models.HnswConfigDiff(m=0)  # Disable HNSW for reranking
-        )
+            hnsw_config=models.HnswConfigDiff(m=0)
+        )   
     }
 )
 
@@ -139,8 +186,12 @@ points = [
     models.PointStruct(
         id=i,
         vector={
-            "dense": dense_documents[i],
-            "colbert": colbert_documents[i]
+            "dense_good_executions": dense_good_executions[i],
+            "dense_needs_improvement": dense_needs_improvement[i],
+            "colbert_good_executions": colbert_good_executions[i],
+            "colbert_needs_improvement": colbert_needs_improvement[i],
+            "poses": pose_vectors[i]
+
         },
         payload={"text": documents[i]}
     ) for i in range(len(documents))
@@ -160,15 +211,21 @@ results = client.query_points(
     # ),
     models.Prefetch(
         query=colbert_queries[0],
-        using="colbert", # only good expert in there for now
+        using="dense_good_executions", # only good expert in there for now
         limit=3
     ),
     models.Prefetch(
         query=colbert_queries[1],
-        using="colbert", # only good expert in there for now
+        using="colbert_good_executions", # only good expert in there for now
         limit=3,
-    )],
-    query=models.RrfQuery(rrf=models.Rrf(weights=[2.0, 1.0])), # try 2 and sweep some hyperparams maybe 
+    ),
+    models.Prefetch(
+        query=colbert_queries[1],
+        using="poses", # only good expert in there for now
+        limit=3,
+    )
+    ],
+    query=models.RrfQuery(rrf=models.Rrf(weights=[1.0, 2.0, 2.0])), # try 2 and sweep some hyperparams maybe 
     with_payload=True
     # query=colbert_query,
     # using="colbert",
