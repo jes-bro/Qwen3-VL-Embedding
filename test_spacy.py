@@ -146,14 +146,14 @@ for subtask in subtasks:
                                 response_constructive: ChatResponse = chat(model=smol, messages=[
                                 {
                                     'role': 'user',
-                                    'content': f'Analyze the following text for instances of negative feedback on skills the subject needs to improve upon. If no negative feedback exists, state \'None found\' and do not attempt to identify any. If negative feedback on skill attributes that need to be performed better exists, create a comma separated list of the lemmas of skill actions (1-3 words) that the subject of the commentary needs to improve upon based on the following commentary from an expert. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates. Here is the commentary: {individual_comment}',
+                                    'content': f'Analyze the following text for instances of negative feedback. If no negative feedback exists, state \'None found\' and do not attempt to identify any. If negative feedback on skill attributes that need to be performed better exists, create a comma separated list of the skill actions (1-3 words) that the subject of the commentary needs to improve upon based on the following commentary from an expert. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates. Here is the commentary: {individual_comment}',
                                 },
                                 ])
 
                                 response_positive: ChatResponse = chat(model=smol, messages=[
                                 {
                                     'role': 'user',
-                                    'content': f'Analyze the following text for instances of positive feedback. If no positive feedback exists, state \'None found\' and do not attempt to identify any. If positive feedback exists, create a comma separated list of the lemmas of skill actions (1-3 words) that the subject performed well based on the commentary. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates. Here is the commentary: {individual_comment}',
+                                    'content': f'Analyze the following text for instances of positive feedback. If no positive feedback exists, state \'None found\' and do not attempt to identify any. If positive feedback exists, create a comma separated list of the skill actions (1-3 words) that the subject performed well based on the commentary. Do not include anything else. No markdown. No additional text. No adjectives. No information about CPR broadly. Do not include the word CPR. Do not include duplicates. Here is the commentary: {individual_comment}',
                                 },
                                 ])
 
