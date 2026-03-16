@@ -23,7 +23,7 @@ log = []
 #     log.append(line)
 
 # process.wait()
-goodbadlistfile = '/home/jess/Qwen3-VL-Embedding/test_spacy.json'
+goodbadlistfile =  "/home/jess/Qwen3-VL-Embedding/all_info.json" # '/home/jess/Qwen3-VL-Embedding/test_spacy.json'
 
 # Define a list of query texts
 with open(goodbadlistfile, 'r') as file:
@@ -51,22 +51,28 @@ for subtask in goods_and_bads.keys():
                             needs_improvement_list = goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow]["needs_improvement_list"]
                         for camera_angle_clip in goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow]:
                             if 'commentary' not in camera_angle_clip and 'good_executions_list' not in camera_angle_clip and 'needs_improvement_list' not in camera_angle_clip:
-                                for idx, (frame_path, empty_list) in enumerate(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip]):
-                                    frame = Image.open(frame_path)
+                                frame_paths = []
+                                poses = []
+                                for idx, (frame_path, pose) in enumerate(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip]):
+                                    frame_paths.append(frame_path)
+                                    poses.append(pose)
+                                clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses}
+                                documents.append(clip_dict) 
+                                    # frame = Image.open(frame_path)
                                     # generate pose
-                                    frame_pose_result = pose_model(frame) 
+                                    # frame_pose_result = pose_model(frame) 
                                     # extract pose 
-                                    pose = frame_pose_result[0].keypoints.data.cpu().numpy().tolist()
-                                    goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip][idx] = (frame_path, pose)
-                                    print(pose)
+                                    # pose = frame_pose_result[0].keypoints.data.cpu().numpy().tolist()
+                                    # goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip][idx] = (frame_path, pose)
+                                    # print(pose)
         # print(goods_and_bads[subtask][vid_name]['time_window'])
         # print(goods_and_bads[subtask][vid_name]['time_window'].keys())
     # print((subtask))
     # print(goods_and_bads[subtask].keys())
 
-test_pose_path = "/home/jess/Qwen3-VL-Embedding/all_info.json"
-with open(test_pose_path, 'w') as f:
-    json.dump(goods_and_bads, f)
+# test_pose_path = "/home/jess/Qwen3-VL-Embedding/all_info.json"
+# with open(test_pose_path, 'w') as f:
+#     json.dump(goods_and_bads, f)
 exit()
     # if 'nov' not in video_name:
     #     documents.append(goods_and_bads[video_name]['good'])
