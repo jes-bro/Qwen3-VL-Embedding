@@ -320,7 +320,7 @@ final_result2 = client.query_points(
     query_filter=models.Filter(
         must=[
             models.FieldCondition(
-                key="vid_name", 
+                key="text.video_name", # try no text next then bed
                 match=models.MatchValue(value=video_name_good_match)
             )
         ]
@@ -354,7 +354,8 @@ final_result2 = client.query_points(
 #     # limit=3,
 #     # with_payload=True
 # )
-
+debug_points = client.scroll(collection_name="dense_multivector_demo", limit=1)
+print(debug_points[0][0].payload)
 print('final result!')
 print(final_result2)
 # print(final_result)
