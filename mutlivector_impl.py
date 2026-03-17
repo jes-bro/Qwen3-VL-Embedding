@@ -355,9 +355,11 @@ final_result2 = client.query_points(
 #     # with_payload=True
 # )
 debug_points = client.scroll(collection_name="dense_multivector_demo", limit=1)
-print(debug_points[0][0].payload)
+# print(debug_points[0][0].payload)
 print('final result!')
-print(final_result2)
+print(final_result2.points[0].payload['text']['video_name'])
+print(final_result2.points[0].payload['text']['time_window'])
+print(final_result2.points[0].payload['text']['camera_angle'])
 # print(final_result)
 
 print('first result!')
