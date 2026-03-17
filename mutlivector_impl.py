@@ -4,6 +4,7 @@ from qdrant_client import QdrantClient, models
 from PIL import Image
 from ultralytics import YOLO
 import random
+import numpy as np
 # 1. Connect to Qdrant server
 client = QdrantClient(":memory:")
 
@@ -35,7 +36,7 @@ with open(goodbadlistfile, 'r') as file:
 #     {"image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"},
 #     {"text": "A woman shares a joyful moment with her golden retriever on a sun-drenched beach at sunset, as the dog offers its paw in a heartwarming display of companionship and trust.", "image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"}
 # ]
-documents = []
+all_documents = []
 queries = []
 exp_video_names = []
 query_vid_names = []
@@ -55,9 +56,11 @@ for subtask in goods_and_bads.keys():
                                 poses = []
                                 for idx, (frame_path, pose) in enumerate(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip]):
                                     frame_paths.append(frame_path)
-                                    poses.append(pose)
+                                    pose = np.array(pose).flatten()[0:51]
+                                    print(pose.shape)
+                                    poses.append(pose.tolist())
                                 clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses, "good_executions": ", ".join(good_executions_list), "needs_improvement": ", ".join(needs_improvement_list)}
-                                documents.append(clip_dict) 
+                                all_documents.append(clip_dict) 
                                     # frame = Image.open(frame_path)
                                     # generate pose
                                     # frame_pose_result = pose_model(frame) 
@@ -95,8 +98,10 @@ for subtask in goods_and_bads.keys():
     #     print("query added")
     #     query_vid_names.append(video_name)
 
-print(f'documents: {documents}')
-print(f'queries: {queries}')
+query = all_documents[0]
+documents = all_documents[1:]
+# print(f'documents: {documents}')
+print(f'queries: {query}')
 
 # Example documents and query
 # documents = [
@@ -113,6 +118,8 @@ print(f'queries: {queries}')
 # ]
 pose_vectors = [doc["poses"] for doc in documents]
 
+print(pose_vectors[0])
+
 dense_good_executions = [
     models.Document(text=doc["good_executions"], model="BAAI/bge-small-en")
     for doc in documents
@@ -125,7 +132,7 @@ dense_needs_improvement = [
 
 
 dense_queries = [
-    models.Document(text=query, model="BAAI/bge-small-en")
+    models.Document(text=query["needs_improvement"], model="BAAI/bge-small-en")
     for query in queries
         
 ]
@@ -141,13 +148,13 @@ colbert_needs_improvement = [
 ]
 
 colbert_queries = [
-    models.Document(text=query, model="colbert-ir/colbertv2.0")
+    models.Document(text=query["needs_improvement"], model="colbert-ir/colbertv2.0")
     for query in queries
 ]
 
-exit()
+# exit()
 
-POSE_LENGTH = ...
+POSE_LENGTH = 51
 collection_name = "dense_multivector_demo"
 client.create_collection(
     collection_name=collection_name,
@@ -159,7 +166,10 @@ client.create_collection(
         ),
         "poses": models.VectorParams(
             size=POSE_LENGTH,
-            distance=models.Distance.COSINE
+            distance=models.Distance.EUCLID,
+            multivector_config=models.MultiVectorConfig(
+                comparator=models.MultiVectorComparator.MAX_SIM
+            )
             # Leave HNSW indexing ON for dense
         ),
         "dense_needs_improvement": models.VectorParams(
@@ -213,17 +223,17 @@ results = client.query_points(
     #     using="dense", # only good expert in there for now
     # ),
     models.Prefetch(
-        query=colbert_queries[0],
+        query=dense_queries[0],
         using="dense_good_executions", # only good expert in there for now
         limit=3
     ),
     models.Prefetch(
-        query=colbert_queries[1],
+        query=colbert_queries[0],
         using="colbert_good_executions", # only good expert in there for now
         limit=3,
     ),
     models.Prefetch(
-        query=colbert_queries[1],
+        query=query["poses"],
         using="poses", # only good expert in there for now
         limit=3,
     )
@@ -238,3 +248,5 @@ results = client.query_points(
 
 print(results)
 # print(colbert_queries[0] @ colbert_queries[1])
+
+# flatten each individual one? and then add to list? 
