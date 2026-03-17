@@ -24,7 +24,7 @@ log = []
 #     log.append(line)
 
 # process.wait()
-goodbadlistfile =  "/home/jess/Qwen3-VL-Embedding/all_info.json" # '/home/jess/Qwen3-VL-Embedding/test_spacy.json'
+goodbadlistfile = "/home/jess/Qwen3-VL-Embedding/all_info_11.json" # "/home/jess/Qwen3-VL-Embedding/all_info copy.json" # '/home/jess/Qwen3-VL-Embedding/test_spacy.json'
 
 # Define a list of query texts
 with open(goodbadlistfile, 'r') as file:
@@ -37,7 +37,7 @@ with open(goodbadlistfile, 'r') as file:
 #     {"text": "A woman shares a joyful moment with her golden retriever on a sun-drenched beach at sunset, as the dog offers its paw in a heartwarming display of companionship and trust.", "image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"}
 # ]
 all_documents = []
-queries = []
+# queries = []
 exp_video_names = []
 query_vid_names = []
 pose_model = YOLO("yolov8l-pose.pt")
@@ -55,18 +55,45 @@ for subtask in goods_and_bads.keys():
                                 frame_paths = []
                                 poses = []
                                 for idx, (frame_path, pose) in enumerate(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip]):
-                                    frame_paths.append(frame_path)
-                                    pose = np.array(pose).flatten()[0:51]
-                                    print(pose.shape)
-                                    poses.append(pose.tolist())
-                                clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses, "good_executions": ", ".join(good_executions_list), "needs_improvement": ", ".join(needs_improvement_list)}
-                                all_documents.append(clip_dict) 
+                                    frame_paths.append(frame_path) 
+                                    # frame = Image.open(frame_path)
+                                    # # # generate pose
+                                    # frame_pose_result = pose_model(frame) 
+                                    # # # extract pose 
+                                    # # print(frame_pose_result[0].keypoints)
+                                    # print() 
+                                    # res = frame_pose_result[0].keypoints.data.cpu().numpy()
+                                    # print(res)
+                                    # pose = frame_pose_result[0].keypoints.data.cpu().numpy()[0]
+                                    # pose = pose[:, :2]
+                                    # print(pose.shape)
+                                    # # exit()
+                                    # mid_hip = (pose[11] + pose[12]) / 2
+                                    # centered_pose = pose - mid_hip
+                                    # print(centered_pose)
+                                    # one_pose = np.array(centered_pose).flatten()[0:34]
+
+                                    # # print(pose.shape)
+                                    poses.append(pose)
+                                if "nus_cpr_11" not in vid_name:
+                                    
+                                    clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses, "good_executions": ", ".join(good_executions_list), "needs_improvement": ", ".join(needs_improvement_list)}
+                                    all_documents.append(clip_dict) 
+                                else:
+                                    if "nus_cpr_11_2" not in vid_name:
+                                        if "47" not in timewindow:
+                                            clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses, "good_executions": ", ".join(good_executions_list), "needs_improvement": ", ".join(needs_improvement_list)}
+                                            all_documents.append(clip_dict) 
+                                        else:
+                                            print(f"excluding {timewindow} {vid_name}")
+                                    else:
+                                        print(f"excluding {timewindow} {vid_name}")
                                     # frame = Image.open(frame_path)
                                     # generate pose
                                     # frame_pose_result = pose_model(frame) 
                                     # extract pose 
                                     # pose = frame_pose_result[0].keypoints.data.cpu().numpy().tolist()
-                                    # goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip][idx] = (frame_path, pose)
+                                    # goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip][idx] = (frame_path, one_pose.tolist())
                                     # print(pose)
         # print(goods_and_bads[subtask][vid_name]['time_window'])
         # print(goods_and_bads[subtask][vid_name]['time_window'].keys())
@@ -84,9 +111,10 @@ for subtask in goods_and_bads.keys():
 #         for idx, doc in enumerate(documents)
 #     ],
 # )
-# test_pose_path = "/home/jess/Qwen3-VL-Embedding/all_info.json"
+# test_pose_path = "/home/jess/Qwen3-VL-Embedding/all_info_11.json"
 # with open(test_pose_path, 'w') as f:
 #     json.dump(goods_and_bads, f)
+# exit()
 
     # if 'nov' not in video_name:
     #     documents.append(goods_and_bads[video_name]['good'])
@@ -98,10 +126,10 @@ for subtask in goods_and_bads.keys():
     #     print("query added")
     #     query_vid_names.append(video_name)
 
-query = all_documents[0]
+queries = [all_documents[0]]
 documents = all_documents[1:]
 # print(f'documents: {documents}')
-print(f'queries: {query}')
+# print(f'queries: {queries[0]}')
 
 # Example documents and query
 # documents = [
@@ -118,7 +146,7 @@ print(f'queries: {query}')
 # ]
 pose_vectors = [doc["poses"] for doc in documents]
 
-print(pose_vectors[0])
+# print(pose_vectors[0])
 
 dense_good_executions = [
     models.Document(text=doc["good_executions"], model="BAAI/bge-small-en")
@@ -154,7 +182,7 @@ colbert_queries = [
 
 # exit()
 
-POSE_LENGTH = 51
+POSE_LENGTH = 34
 collection_name = "dense_multivector_demo"
 client.create_collection(
     collection_name=collection_name,
@@ -164,7 +192,15 @@ client.create_collection(
             distance=models.Distance.COSINE
             # Leave HNSW indexing ON for dense
         ),
-        "poses": models.VectorParams(
+        # "poses": models.VectorParams(
+        #     size=POSE_LENGTH,
+        #     distance=models.Distance.EUCLID,
+        #     multivector_config=models.MultiVectorConfig(
+        #         comparator=models.MultiVectorComparator.MAX_SIM
+        #     )
+        #     # Leave HNSW indexing ON for dense
+        # ),
+            "poses": models.VectorParams(
             size=POSE_LENGTH,
             distance=models.Distance.EUCLID,
             multivector_config=models.MultiVectorConfig(
@@ -225,17 +261,17 @@ results = client.query_points(
     models.Prefetch(
         query=dense_queries[0],
         using="dense_good_executions", # only good expert in there for now
-        limit=3
+        limit=20
     ),
     models.Prefetch(
         query=colbert_queries[0],
         using="colbert_good_executions", # only good expert in there for now
-        limit=3,
+        limit=20,
     ),
     models.Prefetch(
-        query=query["poses"],
+        query=queries[0]["poses"],
         using="poses", # only good expert in there for now
-        limit=3,
+        limit=20,
     )
     ],
     query=models.RrfQuery(rrf=models.Rrf(weights=[1.0, 2.0, 2.0])), # try 2 and sweep some hyperparams maybe 
@@ -246,7 +282,94 @@ results = client.query_points(
     # with_payload=True
 )
 
-print(results)
+video_name_good_match = results.points[0].payload['text']['video_name']
+# final_result = client.query_points(
+#     collection_name="dense_multivector_demo",
+#     prefetch=[
+#         models.Prefetch(
+#             # Using the vector from your first result (or your search vector)
+#             query=queries[0]["poses"], 
+#             using="poses",
+#             # This 'internal' filter makes the search efficient and accurate
+#             filter=models.Filter(
+#                 must=[
+#                     models.FieldCondition(
+#                         key="vid_name", 
+#                         match=models.MatchValue(value=video_name_good_match)
+#                     )
+#                 ]
+#             ),
+#             limit=2
+#         )
+#     ],
+#     query=queries[0]["poses"], 
+#     using="poses",
+#     limit=2,
+#     with_payload=True
+# )
+
+final_result2 = client.query_points(
+    collection_name="dense_multivector_demo",
+    # 1. The vector you want to search for
+    query=queries[0]["poses"], 
+    
+    # 2. IMPORTANT: Tell Qdrant to search specifically in the "poses" vector index
+    using="poses", 
+    
+    # 3. The filter that restricts search to only this video
+    query_filter=models.Filter(
+        must=[
+            models.FieldCondition(
+                key="vid_name", 
+                match=models.MatchValue(value=video_name_good_match)
+            )
+        ]
+    ),
+    limit=2
+)
+
+# client.query_points(
+#     collection_name="dense_multivector_demo",
+#     # prefetch= [
+#     # models.Prefetch(
+#     #     query=queries[0]["poses"],
+#     #     using="poses", # only good expert in there for now
+#     #     limit=20,
+#     #     query
+#     # )
+#     # ],
+#     query=models.NearestQuery(
+#         nearest=models.NamedVector(
+#             name="poses", 
+#             vector=queries[0]["poses"]
+#         )
+#     ),
+#     query_filter=models.Filter(
+#         must=[models.FieldCondition(key="vid_name", match=models.MatchValue(value=video_name_good_match))]
+#     ),
+#     limit=1,# try 2 and sweep some hyperparams maybe 
+#     with_payload=True
+#     # query=colbert_query,
+#     # using="colbert",
+#     # limit=3,
+#     # with_payload=True
+# )
+
+print('final result!')
+print(final_result2)
+# print(final_result)
+
+print('first result!')
+# print(results[0])
+print(results.points[0].payload['text']['video_name'])
+print(results.points[0].payload['text']['time_window'])
+print(results.points[0].payload['text']['camera_angle'])
+print('query!')
+print(queries[0]['video_name'])
+print(queries[0]["time_window"])
+print(queries[0]["camera_angle"])
+print(results.points[0].payload['text']['good_executions'])
+print(queries[0]['needs_improvement'])
 # print(colbert_queries[0] @ colbert_queries[1])
 
 # flatten each individual one? and then add to list? 
