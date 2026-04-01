@@ -274,7 +274,7 @@ results = client.query_points(
         limit=20,
     )
     ],
-    query=models.RrfQuery(rrf=models.Rrf(weights=[1.0, 2.0, 2.0])), # try 2 and sweep some hyperparams maybe 
+    query=models.RrfQuery(rrf=models.Rrf(weights=[1.0, 2.0, 2.5])), # try 2 and sweep some hyperparams maybe 
     with_payload=True
     # query=colbert_query,
     # using="colbert",
