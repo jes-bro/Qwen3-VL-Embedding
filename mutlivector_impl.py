@@ -326,7 +326,18 @@ final_result2 = client.query_points(
     ),
     limit=2
 )
+import math
+expert_pose_sequences = final_result2.points[0].payload['text']['poses']
+novice_pose = queries[0]["poses"][0]
+min_dist = math.inf
+for idx, sequence in enumerate(expert_pose_sequences):
+    # compute similarity between query and seq
+    # use embeddings so its about the vibe of the thing maybe? idk 
+    euclidean_dist = np.linalg.norm(np.array(sequence) - np.array(novice_pose))
+    if euclidean_dist < min_dist:
+        expert_frames = final_result2.points[0].payload['text']['frame_paths'][idx]
 
+print(expert_frames)
 # client.query_points(
 #     collection_name="dense_multivector_demo",
 #     # prefetch= [
@@ -373,5 +384,6 @@ print(queries[0]["camera_angle"])
 print(results.points[0].payload['text']['good_executions'])
 print(queries[0]['needs_improvement'])
 # print(colbert_queries[0] @ colbert_queries[1])
-
+print(expert_frames)
+print((queries[0]["frame_paths"][0]))
 # flatten each individual one? and then add to list? 
