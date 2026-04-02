@@ -54,34 +54,32 @@ for subtask in goods_and_bads.keys():
                             if 'commentary' not in camera_angle_clip and 'good_executions_list' not in camera_angle_clip and 'needs_improvement_list' not in camera_angle_clip:
                                 frame_paths = []
                                 poses = []
+                                sixteen_paths = []
+                                sixteen_poses = []
+                                append_count = 0
                                 for idx, (frame_path, pose) in enumerate(goods_and_bads[subtask][vid_name]['time_stamps_file_paths_poses'][timewindow][camera_angle_clip]):
-                                    frame_paths.append(frame_path) 
-                                    # frame = Image.open(frame_path)
-                                    # # # generate pose
-                                    # frame_pose_result = pose_model(frame) 
-                                    # # # extract pose 
-                                    # # print(frame_pose_result[0].keypoints)
-                                    # print() 
-                                    # res = frame_pose_result[0].keypoints.data.cpu().numpy()
-                                    # print(res)
-                                    # pose = frame_pose_result[0].keypoints.data.cpu().numpy()[0]
-                                    # pose = pose[:, :2]
-                                    # print(pose.shape)
-                                    # # exit()
-                                    # mid_hip = (pose[11] + pose[12]) / 2
-                                    # centered_pose = pose - mid_hip
-                                    # print(centered_pose)
-                                    # one_pose = np.array(centered_pose).flatten()[0:34]
+                                    # append until 16 then idk what to do what structure do you want to create, groups of 16, so yeah list of lists
+                                    sixteen_paths.append(frame_path)
+                                    sixteen_poses.extend(pose)
+                                    append_count += 1
+                                    if append_count % 16 == 0:
+                                        frame_paths.append(', '.join(sixteen_paths)) 
+                                        poses.append(sixteen_poses)
+                                        print(len(sixteen_paths))
+                                        print(len(sixteen_poses))
+                                        sixteen_paths = []
+                                        sixteen_poses = []
+                                        print(f'len frame paths: {len(frame_paths)}')
+                                        print(f'len poses: {len(poses)}')
 
-                                    # # print(pose.shape)
-                                    poses.append(pose)
-                                if "nus_cpr_11" not in vid_name:
+
+                                if "nus_cpr_11" not in vid_name and poses:
                                     
                                     clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses, "good_executions": ", ".join(good_executions_list), "needs_improvement": ", ".join(needs_improvement_list)}
                                     all_documents.append(clip_dict) 
                                 else:
-                                    if "nus_cpr_11_2" not in vid_name:
-                                        if "47" not in timewindow:
+                                    if "nus_cpr_11_2" not in vid_name and poses:
+                                        if "47" not in timewindow and poses:
                                             clip_dict = {"subtask": subtask, "video_name": vid_name, "time_window": timewindow, "camera_angle": camera_angle_clip, "frame_paths": frame_paths, "poses": poses, "good_executions": ", ".join(good_executions_list), "needs_improvement": ", ".join(needs_improvement_list)}
                                             all_documents.append(clip_dict) 
                                         else:
@@ -182,7 +180,7 @@ colbert_queries = [
 
 # exit()
 
-POSE_LENGTH = 34
+POSE_LENGTH = 544
 collection_name = "dense_multivector_demo"
 client.create_collection(
     collection_name=collection_name,
