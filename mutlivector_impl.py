@@ -128,7 +128,8 @@ queries = [all_documents[0]]
 documents = all_documents[1:]
 # print(f'documents: {documents}')
 # print(f'queries: {queries[0]}')
-
+print(len(queries[0]["poses"]))
+# exit()
 # Example documents and query
 # documents = [
 #     "Apple, banana, orange, grape, blueberry, pineapple, juice, house, car",
@@ -267,12 +268,12 @@ results = client.query_points(
         limit=20,
     ),
     models.Prefetch(
-        query=queries[0]["poses"],
+        query=[queries[0]["poses"][0]],
         using="poses", # only good expert in there for now
         limit=20,
     )
     ],
-    query=models.RrfQuery(rrf=models.Rrf(weights=[1.0, 2.0, 2.0])), # try 2 and sweep some hyperparams maybe 
+    query=models.RrfQuery(rrf=models.Rrf(weights=[1.0, 2.0, 1.0])), # try 2 and sweep some hyperparams maybe 
     with_payload=True
     # query=colbert_query,
     # using="colbert",
